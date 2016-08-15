@@ -32,8 +32,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <drm/drm.h>
-#include <drm/drm_mode.h>
+#include <drm.h>
+#include <drm_mode.h>
 
 #include <linux/videodev2.h>
 

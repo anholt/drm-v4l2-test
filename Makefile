@@ -1,10 +1,9 @@
 CROSS_COMPILE ?=
-KDIR ?=
 
 CC	:= $(CROSS_COMPILE)gcc
-CFLAGS	?= -O2 -W -Wall -std=gnu99 -I$(KDIR)/usr/include -I/usr/include/libdrm
+CFLAGS	?= -O2 -W -Wall -std=gnu99 `pkg-config --cflags libdrm`
 LDFLAGS	?=
-LIBS	:= -lrt -ldrm
+LIBS	:= -lrt -ldrm `pkg-config --libs libdrm`
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
