@@ -209,7 +209,7 @@ static int buffer_create(struct buffer *b, int drmfd, struct setup *s,
 	ret = ioctl(drmfd, DRM_IOCTL_MODE_CREATE_DUMB, &gem);
 	if (WARN_ON(ret, "CREATE_DUMB failed: %s\n", ERRSTR))
 		return -1;
-	printf("bo %u %ux%u bpp %u size %lu (%lu)\n", gem.handle, gem.width, gem.height, gem.bpp, gem.size, size);
+	printf("bo %u %ux%u bpp %u size %lu (%lu)\n", gem.handle, gem.width, gem.height, gem.bpp, (long)gem.size, (long)size);
 	b->bo_handle = gem.handle;
 
 	struct drm_prime_handle prime;
