@@ -228,6 +228,13 @@ static int buffer_create(struct buffer *b, int drmfd, struct setup *s,
 	unsigned int fourcc = s->out_fourcc;
 	if (!fourcc)
 		fourcc = s->in_fourcc;
+
+	fprintf(stderr, "FB fourcc %c%c%c%c\n",
+		fourcc,
+		fourcc >> 8,
+		fourcc >> 16,
+		fourcc >> 24);
+
 	ret = drmModeAddFB2(drmfd, s->w, s->h, fourcc, bo_handles,
 		pitches, offsets, &b->fb_handle, 0);
 	if (WARN_ON(ret, "drmModeAddFB2 failed: %s\n", ERRSTR))
