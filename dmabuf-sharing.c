@@ -274,10 +274,6 @@ static int find_mode(drmModeModeInfo *m, int drmfd, struct setup *s,
 	if (WARN_ON(res->count_connectors <= 0, "drm: no connectors\n"))
 		goto fail_res;
 
-	if (WARN_ON(s->conId >= res->count_connectors, "connector %d "
-		"is not supported\n", s->conId))
-		goto fail_res;
-
 	drmModeConnector *c;
 	c = drmModeGetConnector(drmfd, s->conId);
 	if (WARN_ON(!c, "drmModeGetConnector failed: %s\n", ERRSTR))
