@@ -102,8 +102,9 @@ struct stream {
 
 static void usage(char *name)
 {
-	fprintf(stderr, "usage: %s -o connector_id:crtc_id [-Misth]\n", name);
+	fprintf(stderr, "usage: %s [-Moisth]\n", name);
 	fprintf(stderr, "\t-M <drm-module>\tset DRM module\n");
+	fprintf(stderr, "\t-o <connector_id>:<crtc_id>\tchoose a connector/crtc\n");
 	fprintf(stderr, "\t-i <video-node>\tset video node like /dev/video*\n");
 	fprintf(stderr, "\t-S <width,height>\tset input resolution\n");
 	fprintf(stderr, "\t-f <fourcc>\tset input format using 4cc\n");
@@ -261,6 +262,45 @@ static int find_crtc(int drmfd, struct setup *s, uint32_t *con)
 
 	if (WARN_ON(res->count_crtcs <= 0, "drm: no crts\n"))
 		goto fail_res;
+
+	if (!s->conId) {
+		fprintf(stderr,
+			"No connector ID specified.  Choosing default from list:\n");
+
+		for (i = 0; i < res->count_connectors; i++) {
+			drmModeConnector *con =
+				drmModeGetConnector(drmfd, res->connectors[i]);
+			drmModeEncoder *enc = NULL;
+			drmModeCrtc *crtc = NULL;
+
+			if (con->encoder_id) {
+				enc = drmModeGetEncoder(drmfd, con->encoder_id);
+				if (enc->crtc_id) {
+					crtc = drmModeGetCrtc(drmfd, enc->crtc_id);
+				}
+			}
+
+			if (!s->conId && crtc) {
+				s->conId = con->connector_id;
+				s->crtcId = crtc->crtc_id;
+			}
+
+			printf("Connector %d (crtc %d): type %d, %dx%d%s\n",
+			       con->connector_id,
+			       crtc ? crtc->crtc_id : 0,
+			       con->connector_type,
+			       crtc ? crtc->width : 0,
+			       crtc ? crtc->height : 0,
+			       (s->conId == (int)con->connector_id ?
+				" (chosen)" : ""));
+		}
+
+		if (!s->conId) {
+			fprintf(stderr,
+				"No suitable enabled connector found.\n");
+			exit(1);
+		}
+	}
 
 	s->crtcIdx = -1;
 
