@@ -72,10 +72,9 @@ static inline int warn(const char *file, int line, const char *fmt, ...)
 struct setup {
 	char module[32];
 	int conId;
-	uint32_t crtId;
-	int crtIdx;
+	uint32_t crtcId;
+	int crtcIdx;
 	uint32_t planeId;
-	char modestr[32];
 	char video[32];
 	unsigned int w, h;
 	unsigned int use_wh : 1;
@@ -103,9 +102,8 @@ struct stream {
 
 static void usage(char *name)
 {
-	fprintf(stderr, "usage: %s [-Moisth]\n", name);
+	fprintf(stderr, "usage: %s -o connector_id:crtc_id [-Misth]\n", name);
 	fprintf(stderr, "\t-M <drm-module>\tset DRM module\n");
-	fprintf(stderr, "\t-o <connector_id>:<crtc_id>:<mode>\tset a mode\n");
 	fprintf(stderr, "\t-i <video-node>\tset video node like /dev/video*\n");
 	fprintf(stderr, "\t-S <width,height>\tset input resolution\n");
 	fprintf(stderr, "\t-f <fourcc>\tset input format using 4cc\n");
@@ -137,9 +135,8 @@ static int parse_args(int argc, char *argv[], struct setup *s)
 			strncpy(s->module, optarg, 31);
 			break;
 		case 'o':
-			ret = sscanf(optarg, "%u:%u:%31s", &s->conId, &s->crtId,
-				s->modestr);
-			if (WARN_ON(ret != 3, "incorrect mode description\n"))
+			ret = sscanf(optarg, "%u:%u", &s->conId, &s->crtcId);
+			if (WARN_ON(ret != 2, "incorrect con/ctrc description\n"))
 				return -1;
 			break;
 		case 'i':
@@ -254,8 +251,7 @@ fail_gem:
 	return -1;
 }
 
-static int find_mode(drmModeModeInfo *m, int drmfd, struct setup *s,
-	uint32_t *con)
+static int find_crtc(int drmfd, struct setup *s, uint32_t *con)
 {
 	int ret = -1;
 	int i;
@@ -266,16 +262,16 @@ static int find_mode(drmModeModeInfo *m, int drmfd, struct setup *s,
 	if (WARN_ON(res->count_crtcs <= 0, "drm: no crts\n"))
 		goto fail_res;
 
-	s->crtIdx = -1;
+	s->crtcIdx = -1;
 
 	for (i = 0; i < res->count_crtcs; ++i) {
-		if (s->crtId == res->crtcs[i]) {
-			s->crtIdx = i;
+		if (s->crtcId == res->crtcs[i]) {
+			s->crtcIdx = i;
 			break;
 		}
 	}
 
-	if (WARN_ON(s->crtIdx == -1, "drm: CRTC %u not found\n", s->crtId))
+	if (WARN_ON(s->crtcIdx == -1, "drm: CRTC %u not found\n", s->crtcId))
 		goto fail_res;
 
 	if (WARN_ON(res->count_connectors <= 0, "drm: no connectors\n"))
@@ -289,20 +285,6 @@ static int find_mode(drmModeModeInfo *m, int drmfd, struct setup *s,
 	if (WARN_ON(!c->count_modes, "connector supports no mode\n"))
 		goto fail_conn;
 
-	drmModeModeInfo *found = NULL;
-	for (int i = 0; i < c->count_modes; ++i)
-		if (strcmp(c->modes[i].name, s->modestr) == 0)
-			found = &c->modes[i];
-
-	if (WARN_ON(!found, "mode %s not supported\n", s->modestr)) {
-		fprintf(stderr, "Valid modes:");
-		for (int i = 0; i < c->count_modes; ++i)
-			fprintf(stderr, " %s", c->modes[i].name);
-		fprintf(stderr, "\n");
-		goto fail_conn;
-	}
-
-	memcpy(m, found, sizeof *found);
 	if (con)
 		*con = c->connector_id;
 	ret = 0;
@@ -333,7 +315,7 @@ static int find_plane(int drmfd, struct setup *s)
 		if (WARN_ON(!planes, "drmModeGetPlane failed: %s\n", ERRSTR))
 			break;
 
-		if (!(plane->possible_crtcs & (1 << s->crtIdx))) {
+		if (!(plane->possible_crtcs & (1 << s->crtcIdx))) {
 			drmModeFreePlane(plane);
 			continue;
 		}
@@ -438,9 +420,8 @@ int main(int argc, char *argv[])
 	}
 	printf("buffers ready\n");
 
-	drmModeModeInfo drmmode;
 	uint32_t con;
-	ret = find_mode(&drmmode, drmfd, &s, &con);
+	ret = find_crtc(drmfd, &s, &con);
 	BYE_ON(ret, "failed to find valid mode\n");
 
 	ret = find_plane(drmfd, &s);
@@ -490,7 +471,7 @@ int main(int argc, char *argv[])
 		ret = ioctl(v4lfd, VIDIOC_DQBUF, &buf);
 		BYE_ON(ret, "VIDIOC_DQBUF failed: %s\n", ERRSTR);
 
-		ret = drmModeSetPlane(drmfd, s.planeId, s.crtId,
+		ret = drmModeSetPlane(drmfd, s.planeId, s.crtcId,
 				      buffer[buf.index].fb_handle, 0,
 				      s.compose.left, s.compose.top,
 				      s.compose.width,
