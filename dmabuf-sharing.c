@@ -285,6 +285,15 @@ static int find_crtc(int drmfd, struct setup *s, uint32_t *con)
 	if (WARN_ON(!c->count_modes, "connector supports no mode\n"))
 		goto fail_conn;
 
+	if (!s->use_compose) {
+		drmModeCrtc *crtc = drmModeGetCrtc(drmfd, s->crtcId);
+		s->compose.left = crtc->x;
+		s->compose.top = crtc->y;
+		s->compose.width = crtc->width;
+		s->compose.height = crtc->height;
+		drmModeFreeCrtc(crtc);
+	}
+
 	if (con)
 		*con = c->connector_id;
 	ret = 0;
@@ -453,13 +462,6 @@ int main(int argc, char *argv[])
 	stream.v4lfd = v4lfd;
 	stream.current_buffer = -1;
 	stream.buffer = buffer;
-
-	if (!s.use_compose) {
-		s.compose.left = 0;
-		s.compose.top = 0;
-		s.compose.width = fmt.fmt.pix.width;
-		s.compose.height = fmt.fmt.pix.height;
-	}
 
 	while ((ret = poll(fds, 2, 5000)) > 0) {
 		struct v4l2_buffer buf;
