@@ -204,7 +204,7 @@ static int buffer_create(struct buffer *b, int drmfd, struct setup *s,
 	memset(&gem, 0, sizeof gem);
 	gem.width = s->w;
 	gem.height = s->h;
-	gem.bpp = 16;
+	gem.bpp = 32;
 	gem.size = size;
 	ret = ioctl(drmfd, DRM_IOCTL_MODE_CREATE_DUMB, &gem);
 	if (WARN_ON(ret, "CREATE_DUMB failed: %s\n", ERRSTR))
